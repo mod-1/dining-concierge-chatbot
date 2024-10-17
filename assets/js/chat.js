@@ -28,64 +28,43 @@ $(document).ready(function() {
   function callChatbotApi(message) {
     // params, body, additionalParams
     return sdk.chatbotPost({}, {
-      messages: [{
-        type: 'unstructured',
-        unstructured: {
-          text: message
-        }
-      }]
+      messages: message
     }, {});
   }
 
   function insertMessage() {
-    msg = $('.message-input').val();
-    if ($.trim(msg) == '') {
-      return false;
-    }
+    const msg = $('.message-input').val().trim();
+    if (!msg) return;
+
+    // Insert the personal message
     $('<div class="message message-personal">' + msg + '</div>').appendTo($('.mCSB_container')).addClass('new');
     setDate();
     $('.message-input').val(null);
     updateScrollbar();
 
+    // Call the chatbot API and handle the response
     callChatbotApi(msg)
       .then((response) => {
         console.log(response);
-        var data = response.data;
+        const data = response.data;
 
-        if (data.messages && data.messages.length > 0) {
-          console.log('received ' + data.messages.length + ' messages');
-
-          var messages = data.messages;
-
-          for (var message of messages) {
-            if (message.type === 'unstructured') {
-              insertResponseMessage(message.unstructured.text);
-            } else if (message.type === 'structured' && message.structured.type === 'product') {
-              var html = '';
-
-              insertResponseMessage(message.structured.text);
-
-              setTimeout(function() {
-                html = '<img src="' + message.structured.payload.imageUrl + '" witdth="200" height="240" class="thumbnail" /><b>' +
-                  message.structured.payload.name + '<br>$' +
-                  message.structured.payload.price +
-                  '</b><br><a href="#" onclick="' + message.structured.payload.clickAction + '()">' +
-                  message.structured.payload.buttonLabel + '</a>';
-                insertResponseMessage(html);
-              }, 1100);
-            } else {
-              console.log('not implemented');
-            }
-          }
+        if (data?.messages?.length > 0) {
+          // Insert response message from Lex V2
+          data.messages.forEach((message) => {
+            insertResponseMessage(message);
+            updateScrollbar();
+          });
         } else {
+          // Default error message if no message was found
           insertResponseMessage('Oops, something went wrong. Please try again.');
         }
       })
       .catch((error) => {
-        console.log('an error occurred', error);
+        console.error('An error occurred', error);
         insertResponseMessage('Oops, something went wrong. Please try again.');
       });
   }
+
 
   $('.message-submit').click(function() {
     insertMessage();
